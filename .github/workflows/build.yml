@@ -27,7 +27,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libjpeg-dev libpng-dev
+          sudo apt-get install -y build-essential libffi-dev libssl-dev ccache git zip unzip autoconf automake libtool libtool-bin pkg-config zlib1g-dev libncurses-dev cmake libjpeg-dev libpng-dev gettext autopoint m4
           python -m pip install --upgrade pip setuptools wheel
           pip install "cython<3.0.0" buildozer
 
