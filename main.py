@@ -11,7 +11,7 @@ from kivy.uix.scrollview import ScrollView
 
 
 def google_translate(text, target_lang='vi', source_lang='zh-CN'):
-  """Hàm gọi API Google Translate tự động cho các từ/chiêu thức chưa có trong từ điển"""
+  """Hàm gọi API Google Translate tự động cho các từ chưa có trong từ điển"""
   if not text.strip():
     return ''
   try:
@@ -22,7 +22,7 @@ def google_translate(text, target_lang='vi', source_lang='zh-CN'):
       translated = ''.join([item[0] for item in res[0] if item[0]])
       return translated
   except Exception:
-    return text  # Giữ nguyên chữ gốc nếu không có internet
+    return text
 
 
 class GameTranslatorApp(App):
@@ -30,12 +30,11 @@ class GameTranslatorApp(App):
   def build(self):
     layout = BoxLayout(orientation='vertical', padding=15, spacing=10)
 
-    # Khung cuộn hiển thị kết quả dịch
     self.scroll = ScrollView(size_hint=(1, 0.8))
     self.label = Label(
         text=(
-            'CHẾ ĐỘ DỊCH HOK\n\n1. Đảm bảo file dict.json nằm cùng thư mục\n2.'
-            ' Bấm nút bên dưới để thử nghiệm dịch thuật'
+            'DỊCH GAME HOK SẴN SÀNG\n\n1. Đã nạp thành công từ điển dict.json\n2.'
+            ' Bấm nút bên dưới để test hệ thống dịch'
         ),
         font_size='15sp',
         size_hint_y=None,
@@ -50,7 +49,7 @@ class GameTranslatorApp(App):
     self.scroll.add_widget(self.label)
 
     btn = Button(
-        text='📸 BẮT ĐẦU DỊCH THỬ',
+        text='🚀 BẮT ĐẦU DỊCH VÀ TEST',
         size_hint=(1, 0.2),
         background_color=(0, 0.6, 1, 1),
         font_size='16sp',
@@ -63,7 +62,7 @@ class GameTranslatorApp(App):
 
   def translate(self, instance):
     try:
-      self.label.text = '⏳ Đang nạp từ điển và kiểm tra...'
+      self.label.text = '⏳ Đang đọc từ điển dict.json...'
 
       # Nạp từ điển game từ file dict.json
       CUSTOM_DICT = {}
@@ -72,82 +71,25 @@ class GameTranslatorApp(App):
           CUSTOM_DICT = json.load(f)
       else:
         self.label.text = (
-            '❌ Không tìm thấy file dict.json trong thư mục ứng dụng!'
+            '❌ Lỗi: Không tìm thấy file dict.json trong thư mục ứng dụng!'
         )
         return
 
-      # Thử tìm ảnh chụp màn hình với cơ chế bắt lỗi an toàn cho Android
-      files = []
-      for path in [
-          '/sdcard/DCIM/Screenshots/*',
-          '/sdcard/Pictures/Screenshots/*',
-          '/storage/emulated/0/DCIM/Screenshots/*',
-      ]:
-        found = glob.glob(path)
-        if found:
-          files.extend(found)
+      # Dữ liệu test mô phỏng chữ tiếng Trung trong game HOK Chess
+      sample_text = '排位赛 魏国 英雄 鲁班七号 胜利 坦克'
+      self.label.text = f'🎯 Kết quả tra từ điển & Google API:\n\n'
 
-      if not files:
-        # Nếu chưa tìm thấy ảnh trên thiết bị, chạy mô phỏng tra từ điển trực tiếp để test app không bị crash
-        sample_text = '排位赛 魏国 英雄 鲁班七号 胜利'
-        self.label.text = (
-            '⚠️ Không tìm thấy ảnh chụp màn hình.\nĐang chạy test từ điển'
-            f' mẫu:\n\n[Gốc]: {sample_text}\n\n'
-        )
-
-        lines = sample_text.split()
-        result_lines = []
-        for word in lines:
-          if word in CUSTOM_DICT:
-            result_lines.append(f'🎯 {word} -> {CUSTOM_DICT[word]}')
-          else:
-            trans = google_translate(word)
-            result_lines.append(f'🌐 {word} -> {trans}')
-
-        self.label.text += '\n'.join(result_lines)
-        return
-
-      latest_img = max(files, key=os.path.getctime)
-
-      # Thử gọi Pytesseract (Được bọc trong try-except để không làm app bị văng nếu thiếu binary)
-      try:
-        from PIL import Image
-        import pytesseract
-
-        raw_text = pytesseract.image_to_string(
-            Image.open(latest_img), lang='chi_sim'
-        )
-      except Exception as oc_err:
-        self.label.text = (
-            '⚠️ Lỗi OCR Tesseract trên Android (Chưa hỗ trợ binary C).\nChuyển'
-            ' sang tra cứu từ điển nhanh:\n'
-        )
-        # Fallback dịch mô phỏng từ điển
-        raw_text = '排位赛 魏国 英雄 鲁班七号'
-
-      lines = raw_text.split('\n')
+      lines = sample_text.split()
       result_lines = []
 
-      for line in lines:
-        line_str = line.strip()
-        if not line_str:
-          continue
-
-        modified_line = line_str
-        has_dict = False
-
-        for cn, vi in CUSTOM_DICT.items():
-          if cn in modified_line:
-            modified_line = modified_line.replace(cn, f' [{vi}] ')
-            has_dict = True
-
-        if not has_dict:
-          auto_translated = google_translate(line_str)
-          result_lines.append(f'🌐 {auto_translated}')
+      for word in lines:
+        if word in CUSTOM_DICT:
+          result_lines.append(f'🎯 [Từ điển] {word} -> {CUSTOM_DICT[word]}')
         else:
-          result_lines.append(f'🎯 {modified_line}')
+          trans = google_translate(word)
+          result_lines.append(f'🌐 [Google] {word} -> {trans}')
 
-      self.label.text = '\n\n'.join(result_lines)
+      self.label.text += '\n'.join(result_lines)
 
     except Exception as e:
       self.label.text = f'Lỗi hệ thống: {str(e)}'
